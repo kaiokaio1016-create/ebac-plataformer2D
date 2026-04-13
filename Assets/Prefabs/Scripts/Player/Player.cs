@@ -9,8 +9,11 @@ public class Player : MonoBehaviour
     public Vector2 friction = new Vector2(.1f, 0);
 
     public float speed;
+    public float speedRun;
 
     public float forceJump = 2;
+
+    private float _currentSpeed;
 
     private void Update()
     {
@@ -20,17 +23,29 @@ public class Player : MonoBehaviour
 
     private void HandleMoviment()
     {
+        // Lógica para definir a velocidade atual (correr ou andar)
+        if (Input.GetKey(KeyCode.LeftControl))
+        {
+            _currentSpeed = speedRun;
+        }
+        else
+        {
+            _currentSpeed = speed;
+        }
+
+        // Movimentação para Esquerda/Direita
         if (Input.GetKey(KeyCode.LeftArrow))
         {
             //myRigidbody.MovePosition(myRigidbody.position - velocity * Time.deltaTime);
-            myRigidbody.velocity = new Vector2(-speed, myRigidbody.velocity.y);
+            myRigidbody.velocity = new Vector2(-_currentSpeed, myRigidbody.velocity.y);
         }
         else if (Input.GetKey(KeyCode.RightArrow))
         {
             //myRigidbody.MovePosition(myRigidbody.position + velocity * Time.deltaTime);
-            myRigidbody.velocity = new Vector2(speed, myRigidbody.velocity.y);
+            myRigidbody.velocity = new Vector2(_currentSpeed, myRigidbody.velocity.y);
         }
 
+        // Sistema de Fricção (Desaceleração)
         if (myRigidbody.velocity.x > 0)
         {
             myRigidbody.velocity += friction;
