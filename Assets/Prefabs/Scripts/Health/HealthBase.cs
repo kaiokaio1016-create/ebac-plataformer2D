@@ -4,15 +4,44 @@ using UnityEngine;
 
 public class HealthBase : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
+    public int startLife = 10;
+
+    public bool destroyOnKill = false;
+    public float delayToKill = 0f;
+
+    private int _currentLife;
+    private bool _isDead = false;
+
+    private void Awake()
     {
-        
+        Init();
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Init()
     {
-        
+        _isDead = false;
+        _currentLife = startLife;
+    }
+
+    public void Damage(int damage)
+    {
+        if (_isDead) return;
+
+        _currentLife -= damage;
+
+        if (_currentLife <= 0)
+        {
+            Kill();
+        }
+    }
+
+    private void Kill()
+    {
+        _isDead = true;
+
+        if (destroyOnKill)
+        {
+            Destroy(gameObject, delayToKill);
+        }
     }
 }
