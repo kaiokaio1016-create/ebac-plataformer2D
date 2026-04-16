@@ -5,128 +5,152 @@ using DG.Tweening;
 
 public class Player : MonoBehaviour
 {
+    [Header("Componentes")]
     public Rigidbody2D myRigidbody;
+    public Animator animator;
+    public Transform groundCheck;
+    public LayerMask groundLayer;
 
-    [Header("Speed setup")]
-    public Vector2 friction = new Vector2(.1f, 0);
-    public float speed;
-    public float speedRun;
-    public float forceJump = 2;
+    [Header("Setup de Velocidade")]
+    public float speed = 5f;
+    public float speedRun = 9f;
+    public float forceJump = 10f;
+    public float groundCheckRadius = 0.2f;
 
-    [Header("Animation setup")]
-    public float jumpScaleY = 1.5f;
-    public float jumpScaleX = 0.7f;
-    public float animationDuration = .3f;
-    public Ease ease = Ease.OutBack;
+    [Header("Double Tap (Correr)")]
+    public float doubleTapTime = 0.3f; // Tempo máximo entre cliques
+    private float _lastTapTime;
+    private KeyCode _lastKey;
+    private bool _isRunning;
 
-    
-    [Header("Fall Animation setup")]
-    [Tooltip("Quanto ele estica para baixo na queda (Y menor que 1, X maior que 1)")]
-    public float fallScaleY = 0.8f;
-    public float fallScaleX = 1.2f;
-    public float fallAnimationDuration = 0.2f;
-    private bool _isFalling = false; 
-    
+    [Header("Setup de Giro (Flip)")]
+    public float playerSwipeDuration = .1f;
+
+    [Header("Animação")]
+    public string boolRun = "Run";
+    public string triggerJump = "Jump";
 
     private float _currentSpeed;
-    private bool _isRunning = false;
+    private bool _isGrounded;
+    private Vector3 _originalScale;
+    private float _moveInput;
+
+    private void Start()
+    {
+        _originalScale = transform.localScale;
+    }
 
     private void Update()
     {
-        HandleJump();
-        HandleMovinent();
-        HandleFall(); 
+        _isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
+
+        HandleRunInput();
+
+        _moveInput = Input.GetAxisRaw("Horizontal");
+
+        if (Input.GetKeyDown(KeyCode.Space) && _isGrounded)
+        {
+            Jump();
+        }
+
+        UpdateAnimations();
     }
 
-    private void HandleMovinent()
+    private void FixedUpdate()
     {
-        if (Input.GetKey(KeyCode.LeftControl))
-        {
-            _currentSpeed = speedRun;
-        }
-        else
-        {
-            _currentSpeed = speed;
-        }
-
-        if (Input.GetKey(KeyCode.LeftArrow))
-        {
-            myRigidbody.velocity = new Vector2(-_currentSpeed, myRigidbody.velocity.y);
-        }
-        else if (Input.GetKey(KeyCode.RightArrow))
-        {
-            myRigidbody.velocity = new Vector2(_currentSpeed, myRigidbody.velocity.y);
-        }
-
-        if (myRigidbody.velocity.x > 0)
-        {
-            myRigidbody.velocity += friction;
-        }
-        else if (myRigidbody.velocity.x < 0)
-        {
-            myRigidbody.velocity -= friction;
-        }
+        ApplyMovement();
     }
 
-    private void HandleJump()
+    private void HandleRunInput()
     {
-        if (Input.GetKeyDown(KeyCode.Space))
+        // Detecta clique duplo na Seta Direita ou Esquerda
+        if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.LeftArrow))
         {
-            myRigidbody.velocity = Vector2.up * forceJump;
+            KeyCode currentKey = Input.GetKeyDown(KeyCode.RightArrow) ? KeyCode.RightArrow : KeyCode.LeftArrow;
 
-            
-            _isFalling = false;
-            DOTween.Kill(myRigidbody.transform);
-            myRigidbody.transform.localScale = Vector2.one;
+            if (currentKey == _lastKey && Time.time - _lastTapTime < doubleTapTime)
+            {
+                _isRunning = true;
+            }
 
-            HandleScaleJump();
+            _lastTapTime = Time.time;
+            _lastKey = currentKey;
+        }
+
+        // Se soltar as teclas ou parar de mover, para de correr
+        if (Input.GetAxisRaw("Horizontal") == 0)
+        {
+            _isRunning = false;
         }
     }
 
-    private void HandleScaleJump()
+    private void ApplyMovement()
     {
-        
-        myRigidbody.transform.DOScaleY(jumpScaleY, animationDuration).SetLoops(2, LoopType.Yoyo).SetEase(ease);
-        myRigidbody.transform.DOScaleX(jumpScaleX, animationDuration).SetLoops(2, LoopType.Yoyo).SetEase(ease);
-    }
+        // 1. CAPTURAR A DIREÇÃO (Input)
+        // Retorna -1 para esquerda, 1 para direita e 0 para parado
+        float moveInput = 0;
+        if (Input.GetKey(KeyCode.LeftArrow)) moveInput = -1;
+        else if (Input.GetKey(KeyCode.RightArrow)) moveInput = 1;
 
-    
-    private void HandleFall()
-    {
-        
-        if (myRigidbody.velocity.y < -0.1f && !_isFalling)
+        // 2. DEFINIR A VELOCIDADE (Se está correndo ou andando)
+        bool isRunning = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.LeftShift);
+        _currentSpeed = isRunning ? speedRun : speed;
+        animator.speed = isRunning ? 1.5f : 1f;
+
+        // 3. APLICAR A VELOCIDADE NO RIGIDBODY
+        // Aqui garantimos que a velocidade X seja a direção * velocidade
+        myRigidbody.velocity = new Vector2(moveInput * _currentSpeed, myRigidbody.velocity.y);
+
+        // 4. LÓGICA DE GIRO (FLIP) E ANIMAÇÃO
+        if (moveInput != 0) // Se o player está se movendo
         {
-            _isFalling = true;
+            // Gira o personagem usando DOTween baseado no sinal do input
+            float targetScaleX = moveInput * _originalScale.x;
 
-            
-            DOTween.Kill(myRigidbody.transform);
+            if (transform.localScale.x != targetScaleX)
+            {
+                transform.DOScaleX(targetScaleX, playerSwipeDuration);
+            }
 
-            
-            myRigidbody.transform.DOScaleY(fallScaleY, fallAnimationDuration).SetEase(Ease.OutQuad);
-            myRigidbody.transform.DOScaleX(fallScaleX, fallAnimationDuration).SetEase(Ease.OutQuad);
+            // Ativa animação de correr apenas se estiver no chão
+            animator.SetBool(boolRun, _isGrounded);
         }
+        else // Se estiver parado
+        {
+            animator.SetBool(boolRun, false);
+            if (_isGrounded)
+            {
+                myRigidbody.velocity = new Vector2(0, myRigidbody.velocity.y);
+            }
+        }
+
+        // Garante que a animação de Run pare se ele estiver no ar
+        if (!_isGrounded) animator.SetBool(boolRun, false);
     }
 
-    
-    private void OnCollisionEnter2D(Collision2D collision)
+    private void Jump()
     {
-        
-        if (_isFalling)
+        myRigidbody.velocity = new Vector2(myRigidbody.velocity.x, forceJump);
+        animator.SetTrigger(triggerJump);
+    }
+
+    private void UpdateAnimations()
+    {
+        // A animação só ativa se houver input REAL e estiver no chão
+        // Se _moveInput for 0, o SetBool será FALSE imediatamente
+        bool walking = Mathf.Abs(_moveInput) > 0.1f;
+        animator.SetBool(boolRun, walking && _isGrounded);
+
+        // Opcional: Aumenta a velocidade da animação se estiver correndo
+        animator.speed = _isRunning ? 1.5f : 1.0f;
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (groundCheck != null)
         {
-            _isFalling = false;
-
-            
-            DOTween.Kill(myRigidbody.transform);
-
-            
-            
-            Sequence landSequence = DOTween.Sequence();
-            landSequence.Append(myRigidbody.transform.DOScaleY(0.9f, 0.05f)); 
-            landSequence.Append(myRigidbody.transform.DOScaleY(1f, 0.1f));   
-
-            
-            myRigidbody.transform.DOScaleX(1.1f, 0.05f);
-            myRigidbody.transform.DOScaleX(1f, 0.1f).SetDelay(0.05f);
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
         }
     }
 }
