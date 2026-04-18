@@ -4,17 +4,25 @@ using UnityEngine;
 
 public class HealthBase : MonoBehaviour
 {
+    [Header("Health Settings")]
     public int startLife = 10;
-
     public bool destroyOnKill = false;
     public float delayToKill = 0f;
 
     private int _currentLife;
     private bool _isDead = false;
 
+    [SerializeField] private FlashColor _flashColor;
+
     private void Awake()
     {
         Init();
+
+        // Busca o componente FlashColor caso não tenha sido arrastado no Inspector
+        if (_flashColor == null)
+        {
+            _flashColor = GetComponent<FlashColor>();
+        }
     }
 
     private void Init()
@@ -32,6 +40,12 @@ public class HealthBase : MonoBehaviour
         if (_currentLife <= 0)
         {
             Kill();
+        }
+
+        // Executa o efeito visual se o componente existir
+        if (_flashColor != null)
+        {
+            _flashColor.Flash();
         }
     }
 
