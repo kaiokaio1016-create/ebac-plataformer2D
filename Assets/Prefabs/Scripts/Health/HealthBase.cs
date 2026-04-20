@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -5,6 +6,7 @@ using UnityEngine;
 public class HealthBase : MonoBehaviour
 {
     [Header("Health Settings")]
+    public Action OnKill;
     public int startLife = 10;
     public bool destroyOnKill = false;
     public float delayToKill = 0f;
@@ -17,12 +19,7 @@ public class HealthBase : MonoBehaviour
     private void Awake()
     {
         Init();
-
-        // Busca o componente FlashColor caso não tenha sido arrastado no Inspector
-        if (_flashColor == null)
-        {
-            _flashColor = GetComponent<FlashColor>();
-        }
+        if (_flashColor == null) _flashColor = GetComponent<FlashColor>();
     }
 
     private void Init()
@@ -33,25 +30,22 @@ public class HealthBase : MonoBehaviour
 
     public void Damage(int damage)
     {
-        if (_isDead) return;
+        if (_isDead || damage <= 0) return;
 
         _currentLife -= damage;
+
+        if (_flashColor != null) _flashColor.Flash();
 
         if (_currentLife <= 0)
         {
             Kill();
-        }
-
-        // Executa o efeito visual se o componente existir
-        if (_flashColor != null)
-        {
-            _flashColor.Flash();
         }
     }
 
     private void Kill()
     {
         _isDead = true;
+        OnKill?.Invoke();
 
         if (destroyOnKill)
         {
@@ -59,3 +53,4 @@ public class HealthBase : MonoBehaviour
         }
     }
 }
+

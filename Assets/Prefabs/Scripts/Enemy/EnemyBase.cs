@@ -5,32 +5,41 @@ using UnityEngine;
 public class EnemyBase : MonoBehaviour
 {
     public int damage = 10;
-
     public Animator animator;
-    public string triggerAttack = "Attack";
-
     public HealthBase healthBase;
+    public float timeToDestroy = 1f;
 
-    private void OnCollisionEnter2D(Collision2D collision)
-    {
-        Debug.Log(collision.transform.name);
-
-        var health = collision.gameObject.GetComponent<HealthBase>();
-
-        if (health != null)
-        {
-            health.Damage(damage);
-            PlayAttackAnimation();
-        }
-    }
-
-    private void PlayAttackAnimation()
-    {
-        animator.SetTrigger(triggerAttack);
-    }
+    private static readonly int AttackHash = Animator.StringToHash("Attack");
+    private static readonly int KillHash = Animator.StringToHash("Kill");
 
     public void Damage(int amount)
     {
-        healthBase.Damage(amount);
+        if (healthBase != null) healthBase.Damage(amount);
+    }
+
+    private void Awake()
+    {
+        if (healthBase != null) healthBase.OnKill += OnEnemyKill;
+    }
+
+    private void OnDisable()
+    {
+        if (healthBase != null) healthBase.OnKill -= OnEnemyKill;
+    }
+
+    private void OnEnemyKill()
+    {
+        animator.SetTrigger(KillHash);
+        Destroy(gameObject, timeToDestroy);
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        var health = collision.gameObject.GetComponent<HealthBase>();
+        if (health != null)
+        {
+            health.Damage(damage);
+            animator.SetTrigger(AttackHash);
+        }
     }
 }
