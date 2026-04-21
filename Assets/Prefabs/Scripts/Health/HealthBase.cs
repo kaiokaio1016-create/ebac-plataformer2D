@@ -45,12 +45,13 @@ public class HealthBase : MonoBehaviour
     private void Kill()
     {
         _isDead = true;
-        OnKill?.Invoke();
+        
 
         if (destroyOnKill)
         {
             Destroy(gameObject, delayToKill);
         }
+        OnKill?.Invoke();
     }
 }
 

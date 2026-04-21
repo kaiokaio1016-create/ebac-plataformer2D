@@ -22,46 +22,69 @@ public class Player : MonoBehaviour
     public float doubleTapTime = 0.3f;
     private float _lastTapTime;
     private KeyCode _lastKey;
-    private bool _isDoubleTapping;
+    private bool _isRunning;
 
     [Header("Setup de Giro (Flip)")]
     public float playerSwipeDuration = .1f;
 
-    // Usando Hash para performance (evita strings no Update)
-    private static readonly int RunHash = Animator.StringToHash("Run");
-    private static readonly int JumpHash = Animator.StringToHash("Jump");
-    private static readonly int DeathHash = Animator.StringToHash("Death");
+    [Header("Animação")]
+    public string boolRun = "Run";
+    public string triggerJump = "Jump";
+    public string triggerDeath = "Death";
 
     private float _currentSpeed;
     private bool _isGrounded;
+    private bool _isDead = false;
     private Vector3 _originalScale;
     private float _moveInput;
+   
 
     private void Awake()
     {
-        if (healthBase != null) healthBase.OnKill += OnPlayerKill;
+        if (healthBase != null)
+        {
+            healthBase.OnKill += OnPlayerKill;
+        }
     }
 
-    private void OnDisable() // Evita memory leaks
+
+    private void OnPlayerKill()
     {
-        if (healthBase != null) healthBase.OnKill -= OnPlayerKill;
+        _isDead = true; // Adicione esta linha
+        animator.SetTrigger(triggerDeath);
     }
 
-    private void Start() => _originalScale = transform.localScale;
+    private void Start()
+    {
+        _originalScale = transform.localScale;
+    }
 
     private void Update()
     {
-        _isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
 
-        HandleRunInput();
+        if (_isDead) return; 
+
+        _isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
         _moveInput = Input.GetAxisRaw("Horizontal");
 
-        if (Input.GetKeyDown(KeyCode.Space) && _isGrounded) Jump();
+
+        HandleRunInput();
+        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.LeftControl)) _isRunning = true;
+
+
+        if (Input.GetKeyDown(KeyCode.Space) && _isGrounded)
+        {
+            Jump();
+        }
+
 
         UpdateAnimations();
     }
 
-    private void FixedUpdate() => ApplyMovement();
+    private void FixedUpdate()
+    {
+        ApplyMovement();
+    }
 
     private void HandleRunInput()
     {
@@ -70,55 +93,77 @@ public class Player : MonoBehaviour
             KeyCode currentKey = Input.GetKeyDown(KeyCode.RightArrow) ? KeyCode.RightArrow : KeyCode.LeftArrow;
 
             if (currentKey == _lastKey && Time.time - _lastTapTime < doubleTapTime)
-                _isDoubleTapping = true;
+            {
+                _isRunning = true;
+            }
 
             _lastTapTime = Time.time;
             _lastKey = currentKey;
         }
 
-        if (Mathf.Abs(Input.GetAxisRaw("Horizontal")) < 0.1f)
-            _isDoubleTapping = false;
+        if (_moveInput == 0)
+        {
+            _isRunning = false;
+        }
     }
 
     private void ApplyMovement()
     {
-        // Verifica Shift OU Double Tap
-        bool isRunning = _isDoubleTapping || Input.GetKey(KeyCode.LeftShift);
+        float moveInput = 0;
+        if (Input.GetKey(KeyCode.LeftArrow)) moveInput = -1;
+        else if (Input.GetKey(KeyCode.RightArrow)) moveInput = 1;
+
+        bool isRunning = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.LeftShift);
         _currentSpeed = isRunning ? speedRun : speed;
 
-        myRigidbody.velocity = new Vector2(_moveInput * _currentSpeed, myRigidbody.velocity.y);
+        myRigidbody.velocity = new Vector2(moveInput * _currentSpeed, myRigidbody.velocity.y);
 
-        if (_moveInput != 0)
+        if (moveInput != 0)
         {
-            float targetScaleX = _moveInput * _originalScale.x;
+            float targetScaleX = moveInput * _originalScale.x;
             if (transform.localScale.x != targetScaleX)
+            {
                 transform.DOScaleX(targetScaleX, playerSwipeDuration);
+            }
+        }
+        else
+        {
+            if (_isGrounded)
+            {
+                myRigidbody.velocity = new Vector2(0, myRigidbody.velocity.y);
+            }
         }
     }
+
 
     private void Jump()
     {
         myRigidbody.velocity = new Vector2(myRigidbody.velocity.x, forceJump);
-        animator.SetTrigger(JumpHash);
+        animator.SetTrigger(triggerJump);
     }
 
     private void UpdateAnimations()
     {
-        bool isMoving = Mathf.Abs(_moveInput) > 0.1f;
-        animator.SetBool(RunHash, isMoving && _isGrounded);
-        animator.speed = (_isDoubleTapping || Input.GetKey(KeyCode.LeftShift)) && isMoving ? 1.5f : 1.0f;
+
+        bool isWalking = Mathf.Abs(_moveInput) > 0.1f;
+
+
+        animator.SetBool(boolRun, isWalking && _isGrounded);
+
+
+        animator.speed = (_isRunning && isWalking) ? 1.5f : 1.0f;
     }
 
-    private void OnPlayerKill() => animator.SetTrigger(DeathHash);
 
     private void OnDrawGizmos()
     {
         if (groundCheck != null)
         {
             Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius); // "D" maiúsculo aqui!
+            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
         }
     }
+
 
     public void DestroyMe()
     {
