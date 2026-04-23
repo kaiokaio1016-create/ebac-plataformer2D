@@ -13,10 +13,14 @@ public class Player : MonoBehaviour
     public LayerMask groundLayer;
 
     [Header("Setup de Velocidade")]
-    public float speed = 5f;
+    /*public float speed = 5f;
     public float speedRun = 9f;
     public float forceJump = 10f;
-    public float groundCheckRadius = 0.2f;
+    public float groundCheckRadius = 0.2f;*/
+    public SOFloat sospeed;
+    public SOFloat sospeedRun;
+    public SOFloat soforceJump;
+    public SOFloat sogroundCheckRadius;
 
     [Header("Double Tap (Correr)")]
     public float doubleTapTime = 0.3f;
@@ -62,9 +66,9 @@ public class Player : MonoBehaviour
     private void Update()
     {
 
-        if (_isDead) return; 
+        if (_isDead) return;
 
-        _isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
+        _isGrounded = Physics2D.OverlapCircle(groundCheck.position, sogroundCheckRadius.value, groundLayer);
         _moveInput = Input.GetAxisRaw("Horizontal");
 
 
@@ -114,9 +118,9 @@ public class Player : MonoBehaviour
         else if (Input.GetKey(KeyCode.RightArrow)) moveInput = 1;
 
         bool isRunning = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.LeftShift);
-        _currentSpeed = isRunning ? speedRun : speed;
+        _currentSpeed = _isRunning ? sospeedRun.value : sospeed.value;
 
-        myRigidbody.velocity = new Vector2(moveInput * _currentSpeed, myRigidbody.velocity.y);
+        myRigidbody.velocity = new Vector2(_moveInput * _currentSpeed, myRigidbody.velocity.y);
 
         if (moveInput != 0)
         {
@@ -138,7 +142,7 @@ public class Player : MonoBehaviour
 
     private void Jump()
     {
-        myRigidbody.velocity = new Vector2(myRigidbody.velocity.x, forceJump);
+        myRigidbody.velocity = new Vector2(myRigidbody.velocity.x, soforceJump.value);
         animator.SetTrigger(triggerJump);
     }
 
@@ -157,10 +161,12 @@ public class Player : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        if (groundCheck != null)
+        // Verifica se o objeto groundCheck e o ScriptableObject foram atribuídos
+        if (groundCheck != null && sogroundCheckRadius != null)
         {
             Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
+            // Agora acessamos o .value com segurança
+            Gizmos.DrawWireSphere(groundCheck.position, sogroundCheckRadius.value);
         }
     }
 
