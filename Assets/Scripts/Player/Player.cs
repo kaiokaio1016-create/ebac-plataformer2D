@@ -8,79 +8,50 @@ public class Player : MonoBehaviour
     [Header("Componentes")]
     public Rigidbody2D myRigidbody;
     public HealthBase healthBase;
-    public Animator animator;
     public Transform groundCheck;
     public LayerMask groundLayer;
 
-    [Header("Setup de Velocidade")]
-    /*public float speed = 5f;
-    public float speedRun = 9f;
-    public float forceJump = 10f;
-    public float groundCheckRadius = 0.2f;*/
-    public SOFloat sospeed;
-    public SOFloat sospeedRun;
-    public SOFloat soforceJump;
+    [Header("Setup com ScriptableObject")]
+    public SOPlayerSetup playerSetup;
     public SOFloat sogroundCheckRadius;
 
-    [Header("Double Tap (Correr)")]
-    public float doubleTapTime = 0.3f;
-    private float _lastTapTime;
-    private KeyCode _lastKey;
-    private bool _isRunning;
-
-    [Header("Setup de Giro (Flip)")]
-    public float playerSwipeDuration = .1f;
-
-    [Header("Animação")]
-    public string boolRun = "Run";
-    public string triggerJump = "Jump";
-    public string triggerDeath = "Death";
-
-    private float _currentSpeed;
-    private bool _isGrounded;
-    private bool _isDead = false;
     private Vector3 _originalScale;
+    private bool _isDead = false;
+    private bool _isGrounded;
     private float _moveInput;
-   
+
+
+    private GameObject _currentPlayerObj;
+    private Animator _animator;
 
     private void Awake()
     {
-        if (healthBase != null)
-        {
-            healthBase.OnKill += OnPlayerKill;
-        }
-    }
-
-
-    private void OnPlayerKill()
-    {
-        _isDead = true; // Adicione esta linha
-        animator.SetTrigger(triggerDeath);
-    }
-
-    private void Start()
-    {
         _originalScale = transform.localScale;
+
+        if (healthBase != null) healthBase.OnKill += OnPlayerKill;
+
+        if (playerSetup != null && playerSetup.player != null)
+        {
+            
+            _currentPlayerObj = Instantiate(playerSetup.player, transform).gameObject;
+
+            
+            _animator = _currentPlayerObj.GetComponent<Animator>();
+        }
     }
 
     private void Update()
     {
-
         if (_isDead) return;
 
-        _isGrounded = Physics2D.OverlapCircle(groundCheck.position, sogroundCheckRadius.value, groundLayer);
+        CheckGround();
+
         _moveInput = Input.GetAxisRaw("Horizontal");
-
-
-        HandleRunInput();
-        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.LeftControl)) _isRunning = true;
-
 
         if (Input.GetKeyDown(KeyCode.Space) && _isGrounded)
         {
             Jump();
         }
-
 
         UpdateAnimations();
     }
@@ -90,86 +61,87 @@ public class Player : MonoBehaviour
         ApplyMovement();
     }
 
-    private void HandleRunInput()
+    private void CheckGround()
     {
-        if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.LeftArrow))
+        if (groundCheck != null && sogroundCheckRadius != null)
         {
-            KeyCode currentKey = Input.GetKeyDown(KeyCode.RightArrow) ? KeyCode.RightArrow : KeyCode.LeftArrow;
-
-            if (currentKey == _lastKey && Time.time - _lastTapTime < doubleTapTime)
-            {
-                _isRunning = true;
-            }
-
-            _lastTapTime = Time.time;
-            _lastKey = currentKey;
-        }
-
-        if (_moveInput == 0)
-        {
-            _isRunning = false;
+            _isGrounded = Physics2D.OverlapCircle(
+                groundCheck.position,
+                sogroundCheckRadius.value,
+                groundLayer
+            );
         }
     }
 
     private void ApplyMovement()
     {
-        float moveInput = 0;
-        if (Input.GetKey(KeyCode.LeftArrow)) moveInput = -1;
-        else if (Input.GetKey(KeyCode.RightArrow)) moveInput = 1;
+        if (playerSetup == null) return;
 
-        bool isRunning = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.LeftShift);
-        _currentSpeed = _isRunning ? sospeedRun.value : sospeed.value;
+        myRigidbody.velocity = new Vector2(
+            _moveInput * playerSetup.speed,
+            myRigidbody.velocity.y
+        );
 
-        myRigidbody.velocity = new Vector2(_moveInput * _currentSpeed, myRigidbody.velocity.y);
-
-        if (moveInput != 0)
+        if (_moveInput != 0)
         {
-            float targetScaleX = moveInput * _originalScale.x;
-            if (transform.localScale.x != targetScaleX)
-            {
-                transform.DOScaleX(targetScaleX, playerSwipeDuration);
-            }
-        }
-        else
-        {
-            if (_isGrounded)
-            {
-                myRigidbody.velocity = new Vector2(0, myRigidbody.velocity.y);
-            }
+            float targetScaleX = (_moveInput > 0) ? _originalScale.x : -_originalScale.x;
+
+            transform.DOScaleX(targetScaleX, playerSetup.playerSwipeDuration);
         }
     }
 
-
     private void Jump()
     {
-        myRigidbody.velocity = new Vector2(myRigidbody.velocity.x, soforceJump.value);
-        animator.SetTrigger(triggerJump);
+        myRigidbody.velocity = new Vector2(
+            myRigidbody.velocity.x,
+            playerSetup.forceJump
+        );
+
+        HandleScaleJump();
+    }
+
+    private void HandleScaleJump()
+    {
+        transform.DOScaleY(playerSetup.jumpScaleY, playerSetup.animationDuration)
+            .SetLoops(2, LoopType.Yoyo)
+            .SetEase(playerSetup.ease);
+
+        transform.DOScaleX(playerSetup.jumpScaleX, playerSetup.animationDuration)
+            .SetLoops(2, LoopType.Yoyo)
+            .SetEase(playerSetup.ease);
     }
 
     private void UpdateAnimations()
     {
+        if (playerSetup == null || _animator == null) return;
 
-        bool isWalking = Mathf.Abs(_moveInput) > 0.1f;
-
-
-        animator.SetBool(boolRun, isWalking && _isGrounded);
-
-
-        animator.speed = (_isRunning && isWalking) ? 1.5f : 1.0f;
+        _animator.SetBool(
+            playerSetup.boolRun,
+            Mathf.Abs(_moveInput) > 0.1f && _isGrounded
+        );
     }
 
-
-    private void OnDrawGizmos()
+    private void OnPlayerKill()
     {
-        // Verifica se o objeto groundCheck e o ScriptableObject foram atribuídos
-        if (groundCheck != null && sogroundCheckRadius != null)
+        _isDead = true;
+
+        if (_animator != null)
         {
-            Gizmos.color = Color.red;
-            // Agora acessamos o .value com segurança
-            Gizmos.DrawWireSphere(groundCheck.position, sogroundCheckRadius.value);
+            _animator.SetTrigger(playerSetup.triggerDeath);
         }
     }
 
+    private void OnDrawGizmos()
+    {
+        if (groundCheck != null && sogroundCheckRadius != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(
+                groundCheck.position,
+                sogroundCheckRadius.value
+            );
+        }
+    }
 
     public void DestroyMe()
     {

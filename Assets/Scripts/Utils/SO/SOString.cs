@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu]
-public class SOInt : ScriptableObject
+public class SOString : ScriptableObject
 {
-    public int value;
+    public float value;
 }
