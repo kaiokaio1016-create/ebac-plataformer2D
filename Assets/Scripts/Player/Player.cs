@@ -19,10 +19,14 @@ public class Player : MonoBehaviour
     private bool _isDead = false;
     private bool _isGrounded;
     private float _moveInput;
-
-
     private GameObject _currentPlayerObj;
     private Animator _animator;
+
+    [Header("Jump Collision Check")]
+    public Collider2D collider2D;
+    public float distToGround;
+    public float spaceToGround = 0.1f;
+    public ParticleSystem jumpVFX;
 
     private void Awake()
     {
@@ -38,6 +42,19 @@ public class Player : MonoBehaviour
             
             _animator = _currentPlayerObj.GetComponent<Animator>();
         }
+
+        if (collider2D != null)
+        {
+            distToGround = collider2D.bounds.extents.y;
+        }
+
+
+    }
+
+    private bool IsGrounded()
+    {
+        Debug.DrawRay(transform.position, -Vector2.up, Color.magenta, distToGround + spaceToGround);
+        return Physics2D.Raycast(transform.position, -Vector2.up, distToGround + spaceToGround);
     }
 
     private void Update()
@@ -92,12 +109,22 @@ public class Player : MonoBehaviour
 
     private void Jump()
     {
-        myRigidbody.velocity = new Vector2(
-            myRigidbody.velocity.x,
-            playerSetup.forceJump
-        );
+        // Só executa o que está abaixo se estiver no chão
+        if (IsGrounded())
+        {
+            myRigidbody.velocity = new Vector2(
+                myRigidbody.velocity.x,
+                playerSetup.forceJump
+            );
 
-        HandleScaleJump();
+            HandleScaleJump();
+            PlayJumpVFX();
+        }
+    }
+
+    private void PlayJumpVFX()
+    {
+        if (jumpVFX != null) jumpVFX.Play();
     }
 
     private void HandleScaleJump()

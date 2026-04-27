@@ -16,7 +16,7 @@ MonoBehaviour:
   soStringName: {fileID: 11400000, guid: ca153bc7fd29edd4a9ee1b6ea5ca2855, type: 2}
   speed: 5
   speedRun: 9
-  forceJump: 10
+  forceJump: 20
   jumpScaleY: 1.5
   jumpScaleX: 0.7
   animationDuration: 0.3
