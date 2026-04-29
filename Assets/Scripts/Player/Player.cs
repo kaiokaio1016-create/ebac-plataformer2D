@@ -1,4 +1,4 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
@@ -21,12 +21,17 @@ public class Player : MonoBehaviour
     private float _moveInput;
     private GameObject _currentPlayerObj;
     private Animator _animator;
+    [SerializeField] private AudioSource sfxSource;
+    [SerializeField] private AudioClip jumpSound;
+    private AudioSource audioSource;
 
     [Header("Jump Collision Check")]
     public Collider2D collider2D;
     public float distToGround;
     public float spaceToGround = 0.1f;
     public ParticleSystem jumpVFX;
+    public AudioPlayerHelper audioHelper;
+   
 
     private void Awake()
     {
@@ -109,17 +114,12 @@ public class Player : MonoBehaviour
 
     private void Jump()
     {
-        // Só executa o que está abaixo se estiver no chão
-        if (IsGrounded())
-        {
-            myRigidbody.velocity = new Vector2(
-                myRigidbody.velocity.x,
-                playerSetup.forceJump
-            );
+        myRigidbody.velocity = new Vector2(
+            myRigidbody.velocity.x,
+            playerSetup.forceJump
+        );
 
-            HandleScaleJump();
-            PlayJumpVFX();
-        }
+        audioSource.PlayOneShot(jumpSound);
     }
 
     private void PlayJumpVFX()
