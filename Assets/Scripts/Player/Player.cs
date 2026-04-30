@@ -46,6 +46,7 @@ public class Player : MonoBehaviour
 
             
             _animator = _currentPlayerObj.GetComponent<Animator>();
+            audioSource = GetComponent<AudioSource>();
         }
 
         if (collider2D != null)
@@ -119,7 +120,11 @@ public class Player : MonoBehaviour
             playerSetup.forceJump
         );
 
-        audioSource.PlayOneShot(jumpSound);
+        // Chama o som através do seu script auxiliar
+        if (audioHelper != null)
+        {
+            audioHelper.Pular();
+        }
     }
 
     private void PlayJumpVFX()

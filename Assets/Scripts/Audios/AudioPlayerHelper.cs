@@ -24,10 +24,9 @@ public class AudioPlayerHelper : MonoBehaviour
         audioSource.Play();
     }
 
-    void Pular()
+    public void Pular()
     {
-        // lógica do pulo aqui
-
+        // sua lógica de áudio aqui
         audioSource.PlayOneShot(somPulo);
     }
 }
